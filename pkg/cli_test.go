@@ -87,3 +87,17 @@ func TestSource2Target(t *testing.T) {
 	assert.Equal(t, "registry.k8s.io/kube-apiserver:v1.27.4", output.Source)
 	assert.Equal(t, "docker.io/togettoyou/registry.k8s.io.kube-apiserver-arm64:v1.27.4", output.Target)
 }
+
+func TestImageRegistry(t *testing.T) {
+	assert.Equal(t, "docker.io", imageRegistry("nginx:latest"))
+	assert.Equal(t, "docker.io", imageRegistry("library/nginx:latest"))
+	assert.Equal(t, "ghcr.io", imageRegistry("ghcr.io/yuanshi76/rustdesk-api-server:latest"))
+	assert.Equal(t, "registry.cn-hangzhou.aliyuncs.com", imageRegistry("registry.cn-hangzhou.aliyuncs.com/ns/image:tag"))
+	assert.Equal(t, "localhost:5000", imageRegistry("localhost:5000/ns/image:tag"))
+}
+
+func TestNormalizeRegistry(t *testing.T) {
+	assert.Equal(t, "docker.io", normalizeRegistry(""))
+	assert.Equal(t, "ghcr.io", normalizeRegistry("https://ghcr.io/"))
+	assert.Equal(t, "ghcr.io", normalizeRegistry("http://ghcr.io"))
+}

@@ -15,14 +15,18 @@ import (
 )
 
 type Cli struct {
-	cli        *client.Client
-	repository string
-	username   string
-	auth       string
-	log        io.Writer
+	cli                *client.Client
+	repository         string
+	username           string
+	auth               string
+	sourceRegistry     string
+	sourceUsername     string
+	sourcePassword     string
+	sourceRegistryAuth string
+	log                io.Writer
 }
 
-func NewCli(ctx context.Context, repository, username, password string, log io.Writer) (*Cli, error) {
+func NewCli(ctx context.Context, repository, username, password, sourceRegistry, sourceUsername, sourcePassword string, log io.Writer) (*Cli, error) {
 	if username == "" || password == "" {
 		return nil, errors.New("username or password cannot be empty")
 	}
@@ -49,12 +53,37 @@ func NewCli(ctx context.Context, repository, username, password string, log io.W
 		return nil, err
 	}
 
+	sourceAuth := ""
+	if sourceUsername != "" && sourcePassword != "" {
+		sourceRegistry = normalizeRegistry(sourceRegistry)
+
+		sourceAuthConfig := registry.AuthConfig{
+			Username:      sourceUsername,
+			Password:      sourcePassword,
+			ServerAddress: sourceRegistry,
+		}
+		encodedSourceJSON, err := json.Marshal(sourceAuthConfig)
+		if err != nil {
+			return nil, err
+		}
+		sourceAuth = base64.URLEncoding.EncodeToString(encodedSourceJSON)
+
+		_, err = cli.RegistryLogin(ctx, sourceAuthConfig)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	return &Cli{
-		cli:        cli,
-		repository: repository,
-		username:   username,
-		auth:       base64.URLEncoding.EncodeToString(encodedJSON),
-		log:        log,
+		cli:                cli,
+		repository:         repository,
+		username:           username,
+		auth:               base64.URLEncoding.EncodeToString(encodedJSON),
+		sourceRegistry:     sourceRegistry,
+		sourceUsername:     sourceUsername,
+		sourcePassword:     sourcePassword,
+		sourceRegistryAuth: sourceAuth,
+		log:                log,
 	}, nil
 }
 
@@ -131,7 +160,15 @@ type errorMessage struct {
 }
 
 func (c *Cli) PullImage(ctx context.Context, image, platform string) error {
-	pullOut, err := c.cli.ImagePull(ctx, image, types.ImagePullOptions{Platform: platform})
+	registryAuth := ""
+	if c.sourceRegistryAuth != "" && imageRegistry(image) == c.sourceRegistry {
+		registryAuth = c.sourceRegistryAuth
+	}
+
+	pullOut, err := c.cli.ImagePull(ctx, image, types.ImagePullOptions{
+		Platform:     platform,
+		RegistryAuth: registryAuth,
+	})
 	defer func() {
 		if pullOut != nil {
 			pullOut.Close()
@@ -163,6 +200,24 @@ func (c *Cli) PullImage(ctx context.Context, image, platform string) error {
 	}
 
 	return nil
+}
+
+func normalizeRegistry(registry string) string {
+	registry = strings.TrimPrefix(registry, "https://")
+	registry = strings.TrimPrefix(registry, "http://")
+	registry = strings.TrimSuffix(registry, "/")
+	if registry == "" {
+		return "docker.io"
+	}
+	return registry
+}
+
+func imageRegistry(image string) string {
+	firstPart := strings.SplitN(image, "/", 2)[0]
+	if strings.ContainsAny(firstPart, ".:") || firstPart == "localhost" {
+		return firstPart
+	}
+	return "docker.io"
 }
 
 func (c *Cli) PushImage(ctx context.Context, image, platform string) error {

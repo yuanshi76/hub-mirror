@@ -23,6 +23,12 @@
   - `DOCKER_TOKEN`：镜像仓库密码
   - `DOCKER_REPOSITORY`：镜像仓库地址
 
+如果要转换需要登录后才能拉取的源镜像（例如私有 GHCR 镜像），额外添加以下可选 `Secrets`：
+
+  - `SOURCE_REGISTRY`：源镜像仓库地址，例如 `ghcr.io`
+  - `SOURCE_USERNAME`：源镜像仓库登录名
+  - `SOURCE_TOKEN`：源镜像仓库密码或 Token，例如带 `read:packages` 权限的 GitHub PAT
+
 其中 `DOCKER_REPOSITORY` 示例：
 
 - 腾讯云: `ccr.ccs.tencentyun.com/[namespace]`

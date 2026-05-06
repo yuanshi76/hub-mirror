@@ -18,6 +18,9 @@ var (
 	repository = pflag.StringP("repository", "", "", "推送仓库地址，为空默认为 hub.docker.com")
 	username   = pflag.StringP("username", "", "", "仓库用户名")
 	password   = pflag.StringP("password", "", "", "仓库密码")
+	sourceRegistry = pflag.StringP("sourceRegistry", "", "", "源镜像仓库地址，可选")
+	sourceUsername = pflag.StringP("sourceUsername", "", "", "源镜像仓库用户名，可选")
+	sourcePassword = pflag.StringP("sourcePassword", "", "", "源镜像仓库密码或 Token，可选")
 	outputPath = pflag.StringP("outputPath", "", "output.md", "结果输出路径")
 )
 
@@ -42,7 +45,7 @@ func main() {
 	fmt.Printf("mirrors: %+v, platform: %+v\n", hubMirrors.Content, hubMirrors.Platform)
 
 	fmt.Println("初始化 Docker 客户端")
-	cli, err := pkg.NewCli(context.Background(), *repository, *username, *password, os.Stdout)
+	cli, err := pkg.NewCli(context.Background(), *repository, *username, *password, *sourceRegistry, *sourceUsername, *sourcePassword, os.Stdout)
 	if err != nil {
 		panic(err)
 	}
