@@ -101,3 +101,14 @@ func TestNormalizeRegistry(t *testing.T) {
 	assert.Equal(t, "ghcr.io", normalizeRegistry("https://ghcr.io/"))
 	assert.Equal(t, "ghcr.io", normalizeRegistry("http://ghcr.io"))
 }
+
+func TestPullRegistryAuthOnlyMatchesConfiguredSourceRegistry(t *testing.T) {
+	cli := &Cli{
+		sourceRegistry:     "ghcr.io",
+		sourceRegistryAuth: "encoded-auth",
+	}
+
+	assert.Equal(t, "", cli.pullRegistryAuth("cloudflare/cloudflared:latest"))
+	assert.Equal(t, "", cli.pullRegistryAuth("docker.io/library/nginx:latest"))
+	assert.Equal(t, "encoded-auth", cli.pullRegistryAuth("ghcr.io/yuanshi76/rustdesk-api-server:latest"))
+}

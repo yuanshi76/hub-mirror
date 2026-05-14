@@ -20,8 +20,6 @@ type Cli struct {
 	username           string
 	auth               string
 	sourceRegistry     string
-	sourceUsername     string
-	sourcePassword     string
 	sourceRegistryAuth string
 	log                io.Writer
 }
@@ -56,7 +54,6 @@ func NewCli(ctx context.Context, repository, username, password, sourceRegistry,
 	sourceAuth := ""
 	if sourceUsername != "" && sourcePassword != "" {
 		sourceRegistry = normalizeRegistry(sourceRegistry)
-
 		sourceAuthConfig := registry.AuthConfig{
 			Username:      sourceUsername,
 			Password:      sourcePassword,
@@ -67,11 +64,6 @@ func NewCli(ctx context.Context, repository, username, password, sourceRegistry,
 			return nil, err
 		}
 		sourceAuth = base64.URLEncoding.EncodeToString(encodedSourceJSON)
-
-		_, err = cli.RegistryLogin(ctx, sourceAuthConfig)
-		if err != nil {
-			return nil, err
-		}
 	}
 
 	return &Cli{
@@ -80,8 +72,6 @@ func NewCli(ctx context.Context, repository, username, password, sourceRegistry,
 		username:           username,
 		auth:               base64.URLEncoding.EncodeToString(encodedJSON),
 		sourceRegistry:     sourceRegistry,
-		sourceUsername:     sourceUsername,
-		sourcePassword:     sourcePassword,
 		sourceRegistryAuth: sourceAuth,
 		log:                log,
 	}, nil
@@ -160,14 +150,9 @@ type errorMessage struct {
 }
 
 func (c *Cli) PullImage(ctx context.Context, image, platform string) error {
-	registryAuth := ""
-	if c.sourceRegistryAuth != "" && imageRegistry(image) == c.sourceRegistry {
-		registryAuth = c.sourceRegistryAuth
-	}
-
 	pullOut, err := c.cli.ImagePull(ctx, image, types.ImagePullOptions{
 		Platform:     platform,
-		RegistryAuth: registryAuth,
+		RegistryAuth: c.pullRegistryAuth(image),
 	})
 	defer func() {
 		if pullOut != nil {
@@ -200,6 +185,13 @@ func (c *Cli) PullImage(ctx context.Context, image, platform string) error {
 	}
 
 	return nil
+}
+
+func (c *Cli) pullRegistryAuth(image string) string {
+	if c.sourceRegistryAuth != "" && imageRegistry(image) == c.sourceRegistry {
+		return c.sourceRegistryAuth
+	}
+	return ""
 }
 
 func normalizeRegistry(registry string) string {
